@@ -32,9 +32,9 @@ class GeminiGenerator:
         try:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel("gemini-1.5-flash")
+            self.model = genai.GenerativeModel("gemini-2.0-flash")
             self.available = True
-            print("[RAG] Gemini initialized successfully (gemini-1.5-flash)")
+            print("[RAG] Gemini initialized successfully (gemini-2.0-flash)")
         except Exception as e:
             print(f"[RAG] Gemini init failed: {e}")
     
