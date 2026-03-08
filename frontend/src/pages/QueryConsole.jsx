@@ -9,7 +9,7 @@ import {
   ThumbUp, ThumbDown, Speed as SpeedIcon, CachedOutlined,
   CheckCircle, AccessTime, ErrorOutline,
 } from '@mui/icons-material';
-import { submitQuery, getJobStatus, submitFeedback } from '../services/api';
+import { submitQuery, getJobStatus, getQueryResult, submitFeedback } from '../services/api';
 
 const STATUS_CONFIG = {
   queued: { color: 'info', icon: <AccessTime />, label: 'Queued' },
@@ -40,7 +40,9 @@ export default function QueryConsole() {
         setPollCount(prev => prev + 1);
 
         if (data.status === 'completed' || data.status === 'failed' || data.status === 'escalated') {
-          setResult(data);
+          // Fetch full result with response text, confidence, sources
+          const fullResult = await getQueryResult(jobId);
+          setResult(fullResult);
           setLoading(false);
           clearInterval(interval);
         }
