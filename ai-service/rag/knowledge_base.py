@@ -1,12 +1,12 @@
 """
 Knowledge Base Manager
-Loads documents, builds BM25 and FAISS indices for hybrid retrieval.
+Loads documents, builds BM25 index, and uses Gemini embeddings for vector search.
+Lightweight — no local ML models, suitable for Render free tier (512MB RAM).
 """
 import json
 import os
 import re
 import numpy as np
-from rank_bm25 import BM25Okapi
 
 
 class KnowledgeBase:
@@ -15,9 +15,8 @@ class KnowledgeBase:
         self.doc_texts = []
         self.tokenized_docs = []
         self.bm25 = None
-        self.faiss_index = None
-        self.embeddings = None
-        self.model = None
+        self.doc_embeddings = None
+        self.gemini_model = None
     
     def load_documents(self, data_dir: str = None):
         """Load knowledge base articles from JSON files."""
@@ -35,7 +34,6 @@ class KnowledgeBase:
                     else:
                         self.documents.append(articles)
         
-        # Build searchable text for each document
         self.doc_texts = []
         for doc in self.documents:
             text = f"{doc.get('title', '')} {doc.get('content', '')} {' '.join(doc.get('tags', []))}"
@@ -48,7 +46,6 @@ class KnowledgeBase:
         text = text.lower()
         text = re.sub(r'[^a-z0-9\s]', ' ', text)
         tokens = text.split()
-        # Remove common stop words
         stop_words = {'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but',
                       'in', 'with', 'to', 'for', 'of', 'not', 'no', 'can', 'will', 'do',
                       'does', 'did', 'has', 'have', 'had', 'be', 'was', 'were', 'been',
@@ -58,28 +55,43 @@ class KnowledgeBase:
     
     def build_bm25_index(self):
         """Build BM25 index from document texts."""
+        from rank_bm25 import BM25Okapi
         self.tokenized_docs = [self.tokenize(text) for text in self.doc_texts]
         self.bm25 = BM25Okapi(self.tokenized_docs)
         print(f"[KnowledgeBase] BM25 index built with {len(self.tokenized_docs)} documents")
     
-    def build_vector_index(self, model):
-        """Build FAISS vector index from document embeddings."""
-        import faiss
+    def build_vector_index(self, gemini_embed_fn):
+        """Build vector index using Gemini embeddings (API-based, no local model)."""
+        self.gemini_model = gemini_embed_fn
         
-        self.model = model
-        print("[KnowledgeBase] Generating document embeddings...")
-        self.embeddings = model.encode(self.doc_texts, show_progress_bar=True)
-        self.embeddings = np.array(self.embeddings, dtype='float32')
+        print("[KnowledgeBase] Generating document embeddings via Gemini API...")
+        self.doc_embeddings = []
         
-        # Normalize embeddings for cosine similarity
-        faiss.normalize_L2(self.embeddings)
+        # Embed in batches to avoid rate limits
+        batch_size = 5
+        for i in range(0, len(self.doc_texts), batch_size):
+            batch = self.doc_texts[i:i+batch_size]
+            try:
+                import google.generativeai as genai
+                result = genai.embed_content(
+                    model="models/text-embedding-004",
+                    content=batch,
+                    task_type="retrieval_document"
+                )
+                self.doc_embeddings.extend(result['embedding'])
+            except Exception as e:
+                print(f"[KnowledgeBase] Embedding batch {i} failed: {e}")
+                # Use zero vectors as fallback
+                for _ in batch:
+                    self.doc_embeddings.append([0.0] * 768)
         
-        # Build FAISS index
-        dimension = self.embeddings.shape[1]
-        self.faiss_index = faiss.IndexFlatIP(dimension)  # Inner product = cosine sim after normalization
-        self.faiss_index.add(self.embeddings)
+        self.doc_embeddings = np.array(self.doc_embeddings, dtype='float32')
+        # Normalize for cosine similarity
+        norms = np.linalg.norm(self.doc_embeddings, axis=1, keepdims=True)
+        norms[norms == 0] = 1
+        self.doc_embeddings = self.doc_embeddings / norms
         
-        print(f"[KnowledgeBase] FAISS index built (dim={dimension}, docs={len(self.doc_texts)})")
+        print(f"[KnowledgeBase] Vector index built ({len(self.doc_texts)} docs, dim={self.doc_embeddings.shape[1]})")
     
     def bm25_search(self, query: str, top_k: int = 5) -> list:
         """Search using BM25 keyword matching."""
@@ -102,28 +114,54 @@ class KnowledgeBase:
         return results
     
     def vector_search(self, query: str, top_k: int = 5) -> list:
-        """Search using FAISS vector similarity."""
-        if self.faiss_index is None or self.model is None:
+        """Search using Gemini embedding cosine similarity (no FAISS needed)."""
+        if self.doc_embeddings is None:
             return []
         
-        import faiss
+        try:
+            import google.generativeai as genai
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=query,
+                task_type="retrieval_query"
+            )
+            query_emb = np.array(result['embedding'], dtype='float32')
+            # Normalize
+            norm = np.linalg.norm(query_emb)
+            if norm > 0:
+                query_emb = query_emb / norm
+        except Exception as e:
+            print(f"[KnowledgeBase] Query embedding failed: {e}")
+            return []
         
-        query_embedding = self.model.encode([query])
-        query_embedding = np.array(query_embedding, dtype='float32')
-        faiss.normalize_L2(query_embedding)
-        
-        distances, indices = self.faiss_index.search(query_embedding, top_k)
+        # Cosine similarity via dot product (vectors are normalized)
+        similarities = np.dot(self.doc_embeddings, query_emb)
+        top_indices = np.argsort(similarities)[::-1][:top_k]
         
         results = []
-        for i, (idx, dist) in enumerate(zip(indices[0], distances[0])):
-            if idx >= 0:
+        for idx in top_indices:
+            if similarities[idx] > 0:
                 results.append({
                     "index": int(idx),
                     "document": self.documents[idx],
-                    "score": float(dist),
+                    "score": float(similarities[idx]),
                     "method": "vector"
                 })
         return results
+    
+    def get_embedding(self, text: str) -> list:
+        """Get embedding for a single text (used by semantic cache)."""
+        try:
+            import google.generativeai as genai
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=text,
+                task_type="retrieval_query"
+            )
+            return result['embedding']
+        except Exception as e:
+            print(f"[KnowledgeBase] Embedding failed: {e}")
+            return None
     
     def get_document_count(self):
         return len(self.documents)

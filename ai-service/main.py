@@ -1,10 +1,10 @@
 """
 SupportMind AI Inference Service
-FastAPI application with hybrid RAG pipeline (BM25 + Vector + RRF Reranking)
+FastAPI application with hybrid RAG pipeline (BM25 + Gemini Embeddings + RRF Reranking)
+Lightweight — no local ML models, runs within 512MB RAM.
 """
 import os
 import time
-import numpy as np
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,32 +15,40 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Global state
-model = None
 pipeline = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize models and knowledge base on startup."""
-    global model, pipeline
+    """Initialize knowledge base and RAG pipeline on startup."""
+    global pipeline
     
     print("[AI Service] Initializing...")
     start = time.time()
     
-    # Load sentence-transformers model
-    from sentence_transformers import SentenceTransformer
-    print("[AI Service] Loading embedding model (all-MiniLM-L6-v2)...")
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    # Configure Gemini
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("[AI Service] WARNING: No GEMINI_API_KEY set. RAG generation will use templates.")
+    else:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        print("[AI Service] Gemini API configured")
     
     # Initialize knowledge base
     from rag.knowledge_base import knowledge_base
     knowledge_base.load_documents()
     knowledge_base.build_bm25_index()
-    knowledge_base.build_vector_index(model)
+    
+    # Build vector index using Gemini embeddings (API-based, no local model)
+    if api_key:
+        knowledge_base.build_vector_index(gemini_embed_fn=True)
+    else:
+        print("[AI Service] Skipping vector index (no API key)")
     
     # Initialize pipeline
     from rag.pipeline import HybridRAGPipeline
-    pipeline = HybridRAGPipeline(model=model)
+    pipeline = HybridRAGPipeline()
     
     elapsed = time.time() - start
     print(f"[AI Service] Ready in {elapsed:.2f}s")
@@ -53,7 +61,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SupportMind AI Service",
-    description="Hybrid RAG inference with BM25 + Vector Similarity + RRF Reranking",
+    description="Hybrid RAG inference with BM25 + Gemini Embeddings + RRF Reranking",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -100,7 +108,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "ai-service",
-        "model": "all-MiniLM-L6-v2",
+        "embedding_model": "gemini-text-embedding-004",
+        "generation_model": "gemini-1.5-flash",
         "documents_loaded": knowledge_base.get_document_count(),
         "timestamp": time.time()
     }
@@ -135,20 +144,22 @@ async def infer(request: InferRequest):
 @app.post("/api/embed", response_model=EmbedResponse)
 async def get_embedding(request: EmbedRequest):
     """Get embedding vector for a text (used by semantic cache)."""
-    if not model:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
     if not request.text or not request.text.strip():
         raise HTTPException(status_code=400, detail="Text is required")
     
     try:
-        embedding = model.encode([request.text.strip()])
-        embedding_list = embedding[0].tolist()
+        from rag.knowledge_base import knowledge_base
+        embedding = knowledge_base.get_embedding(request.text.strip())
+        
+        if embedding is None:
+            raise HTTPException(status_code=503, detail="Embedding service unavailable")
         
         return EmbedResponse(
-            embedding=embedding_list,
-            dimension=len(embedding_list)
+            embedding=embedding,
+            dimension=len(embedding)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Embedding failed: {str(e)}")
 
@@ -167,11 +178,11 @@ async def knowledge_stats():
         "total_documents": knowledge_base.get_document_count(),
         "categories": categories,
         "bm25_indexed": knowledge_base.bm25 is not None,
-        "faiss_indexed": knowledge_base.faiss_index is not None
+        "vector_indexed": knowledge_base.doc_embeddings is not None
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("AI_PORT", 8000))
+    port = int(os.getenv("PORT", os.getenv("AI_PORT", 8000)))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
