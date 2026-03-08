@@ -1,5 +1,5 @@
 const { Queue } = require('bullmq');
-const { createRedisClient } = require('../../shared/redis-client');
+const { createRedisClient } = require('./redis-client');
 
 const connection = createRedisClient();
 

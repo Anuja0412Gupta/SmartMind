@@ -1,4 +1,4 @@
-const { createRedisClient } = require('../../shared/redis-client');
+const { createRedisClient } = require('./redis-client');
 const axios = require('axios');
 
 const redis = createRedisClient();

@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Worker, Queue } = require('bullmq');
 const mongoose = require('mongoose');
 const axios = require('axios');
-const { createRedisClient } = require('../shared/redis-client');
+const { createRedisClient } = require('./redis-client');
 
 // MongoDB Models (inline to avoid cross-service imports)
 const querySchema = new mongoose.Schema({
