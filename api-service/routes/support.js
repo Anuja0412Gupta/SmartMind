@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const Query = require('../models/Query');
@@ -61,6 +62,12 @@ router.post('/query', async (req, res) => {
     // 3. Push to BullMQ queue
     await addInferenceJob(jobId, queryText);
     await logEvent('api-service', 'job_created', { jobId, queryId: queryDoc._id });
+
+    // 4. Wake up worker service (Render free tier sleeps after 15min)
+    const workerUrl = process.env.WORKER_SERVICE_URL;
+    if (workerUrl) {
+      axios.get(workerUrl).catch(() => {});  // fire-and-forget
+    }
 
     res.status(202).json({ jobId });
   } catch (err) {
