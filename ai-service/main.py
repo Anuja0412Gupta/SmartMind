@@ -109,7 +109,7 @@ async def health_check():
         "status": "healthy",
         "service": "ai-service",
         "embedding_model": "gemini-text-embedding-004",
-        "generation_model": "gemini-2.0-flash",
+        "generation_model": "gemini-2.5-flash",
         "documents_loaded": knowledge_base.get_document_count(),
         "timestamp": time.time()
     }
