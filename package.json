@@ -1,0 +1,15 @@
+{
+  "name": "supportmind",
+  "version": "1.0.0",
+  "description": "Scalable AI Support Infrastructure with Asynchronous Processing",
+  "scripts": {
+    "start:api": "cd api-service && node server.js",
+    "start:worker": "cd worker-service && node worker.js",
+    "start:ai": "cd ai-service && uvicorn main:app --host 0.0.0.0 --port 8000",
+    "start:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install --prefix api-service && npm install --prefix worker-service && cd frontend && npm install",
+    "dev": "concurrently \"npm run start:api\" \"npm run start:worker\" \"npm run start:frontend\""
+  },
+  "keywords": ["ai", "support", "rag", "bullmq", "redis"],
+  "license": "MIT"
+}

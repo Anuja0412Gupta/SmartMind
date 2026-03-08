@@ -1,0 +1,72 @@
+[
+  {
+    "id": "kb_001",
+    "title": "Device Reset Procedure",
+    "content": "To reset your device, follow these steps: 1) Press and hold the power button for 10 seconds. 2) Wait for the LED to blink three times. 3) Release the power button. 4) The device will restart in factory default mode. 5) Reconfigure your settings using the setup wizard. Note: A factory reset will erase all custom configurations and stored data.",
+    "category": "faq",
+    "tags": ["reset", "factory reset", "power button", "LED"]
+  },
+  {
+    "id": "kb_002",
+    "title": "Network Connectivity Troubleshooting",
+    "content": "If your device cannot connect to the network: 1) Check that the Ethernet cable is firmly connected or WiFi is enabled. 2) Verify network credentials (SSID and password). 3) Run the built-in network diagnostic from Settings > Network > Diagnostics. 4) Check if the device firmware is up to date. 5) Try a different network port or access point. 6) If using a static IP, verify the IP address, subnet mask, and gateway settings. Common error codes: NET_001 = Cable disconnected, NET_002 = Authentication failure, NET_003 = DHCP timeout.",
+    "category": "troubleshooting",
+    "tags": ["network", "connectivity", "ethernet", "wifi", "diagnostics"]
+  },
+  {
+    "id": "kb_003",
+    "title": "Firmware Update Guide",
+    "content": "To update device firmware: 1) Download the latest firmware from the support portal. 2) Connect the device via USB to your computer. 3) Open the Device Manager application. 4) Navigate to Firmware > Update. 5) Select the downloaded firmware file. 6) Click 'Start Update' and wait for completion (approximately 5-10 minutes). 7) Do not disconnect the device during the update. 8) The device will automatically reboot after the update. Supported firmware formats: .bin, .fw, .hex.",
+    "category": "faq",
+    "tags": ["firmware", "update", "USB", "device manager"]
+  },
+  {
+    "id": "kb_004",
+    "title": "Sensor Calibration Process",
+    "content": "Sensor calibration ensures accurate measurements. Steps: 1) Place the device on a stable, flat surface. 2) Open Settings > Calibration > Auto-Calibrate. 3) Follow the on-screen instructions for each sensor type. 4) Temperature sensor: requires a 5-minute stabilization period. 5) Pressure sensor: apply reference pressure values when prompted. 6) After calibration, verify readings against known reference values. 7) Calibration data is stored internally and persists through reboots. Recalibrate every 6 months or after physical impact.",
+    "category": "troubleshooting",
+    "tags": ["sensor", "calibration", "temperature", "pressure", "accuracy"]
+  },
+  {
+    "id": "kb_005",
+    "title": "API Authentication and Access Tokens",
+    "content": "The device API uses OAuth 2.0 for authentication. To obtain an access token: 1) Register your application at developer.portal.com. 2) Use your client_id and client_secret to request a token via POST /oauth/token. 3) Include the access token in the Authorization header: Bearer <token>. 4) Tokens expire after 3600 seconds by default. 5) Use the refresh_token to obtain a new access token without re-authentication. 6) Rate limits: 1000 requests per hour for standard accounts, 10000 for premium. Error codes: AUTH_001 = Invalid credentials, AUTH_002 = Token expired, AUTH_003 = Rate limit exceeded.",
+    "category": "faq",
+    "tags": ["API", "authentication", "OAuth", "token", "rate limit"]
+  },
+  {
+    "id": "kb_006",
+    "title": "Error Log Analysis Guide",
+    "content": "Understanding error logs: The system generates logs in /var/log/device/ directory. Log levels: DEBUG, INFO, WARN, ERROR, FATAL. Common error patterns: 1) MEMORY_OVERFLOW: Device RAM exceeded 90% usage. Restart the device and check for memory leaks. 2) DISK_FULL: Storage is at capacity. Clear temporary files via Settings > Storage > Cleanup. 3) WATCHDOG_TIMEOUT: A critical process became unresponsive. Check process priorities and system load. 4) COMM_FAILURE: Communication bus error. Check physical connections and bus termination. Use 'logparser --filter ERROR --since 24h' to view recent errors.",
+    "category": "classification",
+    "tags": ["error", "logs", "debugging", "memory", "disk", "watchdog"]
+  },
+  {
+    "id": "kb_007",
+    "title": "Data Backup and Recovery",
+    "content": "Regular backups prevent data loss. Backup methods: 1) Automated cloud backup: Enable in Settings > Backup > Cloud Sync. Backups run daily at 2:00 AM. 2) Manual backup: Connect USB storage and select Settings > Backup > Export. 3) Configuration backup: Export device configuration as JSON via API endpoint GET /api/config/export. Recovery: 1) From cloud: Settings > Backup > Restore > Select date. 2) From USB: Insert backup media and select Settings > Backup > Import. 3) From configuration file: POST /api/config/import with JSON payload. Recovery time varies from 5-30 minutes depending on data volume.",
+    "category": "faq",
+    "tags": ["backup", "recovery", "cloud", "USB", "configuration"]
+  },
+  {
+    "id": "kb_008",
+    "title": "Performance Optimization Configuration",
+    "content": "Optimize device performance: 1) Enable hardware acceleration in Settings > Performance > GPU Acceleration. 2) Adjust process priority: Set critical processes to 'High' priority. 3) Memory management: Enable automatic memory cleanup with threshold at 80%. 4) Network optimization: Enable QoS for priority traffic. Configure bandwidth allocation per service. 5) Disk I/O: Enable write caching for better throughput. Use SSD storage for database operations. 6) Monitoring: Enable performance metrics via Settings > Monitoring. View real-time CPU, memory, disk, and network utilization. Alert thresholds can be configured per metric.",
+    "category": "troubleshooting",
+    "tags": ["performance", "optimization", "hardware acceleration", "memory", "QoS"]
+  },
+  {
+    "id": "kb_009",
+    "title": "Multi-Device Fleet Management",
+    "content": "Managing multiple devices: 1) Register devices in the fleet management portal. 2) Group devices by location, function, or department. 3) Deploy firmware updates to groups simultaneously. 4) Monitor device health across the fleet from a single dashboard. 5) Set up alerting rules for offline devices or anomalous behavior. 6) Use device templates to apply consistent configurations. 7) Role-based access control: Admin, Operator, Viewer roles available. 8) API integration: Use the Fleet API to automate management tasks. Bulk operations support up to 1000 devices per request.",
+    "category": "faq",
+    "tags": ["fleet", "management", "deployment", "monitoring", "RBAC"]
+  },
+  {
+    "id": "kb_010",
+    "title": "Security Hardening Guide",
+    "content": "Secure your device deployment: 1) Change default credentials immediately after setup. 2) Enable TLS 1.3 for all API communications. 3) Configure firewall rules to restrict access to known IP ranges. 4) Enable audit logging for all administrative actions. 5) Set up certificate-based authentication for device-to-device communication. 6) Regularly rotate access tokens and API keys (recommended: every 90 days). 7) Enable intrusion detection system (IDS) alerts. 8) Keep firmware updated to receive security patches. 9) Disable unused services and ports. 10) Implement network segmentation for IoT devices.",
+    "category": "troubleshooting",
+    "tags": ["security", "TLS", "firewall", "authentication", "hardening"]
+  }
+]

@@ -1,0 +1,59 @@
+services:
+  # API Service
+  - type: web
+    name: supportmind-api
+    runtime: node
+    plan: free
+    buildCommand: cd api-service && npm install
+    startCommand: cd api-service && node server.js
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: PORT
+        value: "5000"
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.65"
+      - key: CACHE_SIMILARITY_THRESHOLD
+        value: "0.92"
+      - key: CACHE_TTL
+        value: "3600"
+      - key: NODE_ENV
+        value: production
+
+  # Worker Service
+  - type: worker
+    name: supportmind-worker
+    runtime: node
+    plan: free
+    buildCommand: cd worker-service && npm install
+    startCommand: cd worker-service && node worker.js
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.65"
+      - key: MIN_WORKERS
+        value: "1"
+      - key: MAX_WORKERS
+        value: "3"
+      - key: NODE_ENV
+        value: production
+
+  # AI Service
+  - type: web
+    name: supportmind-ai
+    runtime: python
+    plan: free
+    buildCommand: cd ai-service && pip install -r requirements.txt
+    startCommand: cd ai-service && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
