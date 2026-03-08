@@ -2,8 +2,17 @@ require('dotenv').config();
 const { Worker, Queue } = require('bullmq');
 const mongoose = require('mongoose');
 const axios = require('axios');
+const http = require('http');
 const { createRedisClient } = require('./redis-client');
 
+// Health check server so Render detects an open port
+const PORT = process.env.PORT || 10000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ status: 'worker-service running', workers: pool?.workers?.length || 0 }));
+}).listen(PORT, () => {
+  console.log(`[Worker Service] Health server on port ${PORT}`);
+});
 // MongoDB Models (inline to avoid cross-service imports)
 const querySchema = new mongoose.Schema({
   jobId: { type: String, required: true, unique: true, index: true },
