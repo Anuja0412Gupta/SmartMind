@@ -4,7 +4,7 @@ services:
     name: supportmind-api
     runtime: node
     plan: free
-    buildCommand: cd api-service && npm install
+    buildCommand: npm install && cd api-service && npm install
     startCommand: cd api-service && node server.js
     envVars:
       - key: MONGODB_URI
@@ -29,7 +29,7 @@ services:
     name: supportmind-worker
     runtime: node
     plan: free
-    buildCommand: cd worker-service && npm install
+    buildCommand: npm install && cd worker-service && npm install
     startCommand: cd worker-service && node worker.js
     envVars:
       - key: MONGODB_URI
